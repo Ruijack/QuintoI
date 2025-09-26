@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prova con Postman</title>
+</head>
+<script>
+    "use strict"
+    async function chiedi() {
+        //let risposta = await fetch("https://kili.aspix.it/edoardo/esempio.json");
+        let risposta = await fetch("http://talos.iiscggubbio.local:9000/saluto.json");
+        let fileJason = await risposta.json();
+        let nome = document.getElementById("nome");
+        nome.value = fileJason.nome;
+        let saluto = document.getElementById("saluto");
+        saluto.innerHTML = fileJason.saluto;
+    }
+
+    function inviaNome() {
+        let nome = document.getElementById("nome").value;
+        saluta(nome);
+    }
+    async function saluta(nome) {
+        let risposta = await fetch("http://talos.iiscggubbio.local:9000/salutoPersonale?nome=" + nome);
+        let fileJason = await risposta.json();
+        let saluto = document.getElementById("saluto");
+        saluto.innerText = fileJason.saluto;
+    }
+
+    function lingua() {
+        let lingua = document.getElementById("lingua").value;
+        salutaDiversamente(lingua);
+    }
+
+    async function salutaDiversamente(lingua) {
+        let risposta = await fetch("http://talos.iiscggubbio.local:9000/salutoLocale/" + lingua);
+        let fileJason = await risposta.json();
+        if (fileJason.saluta != null) {
+            let saluto = document.getElementById("saluto");
+            saluto.innerText = fileJason.saluto;
+        } else {
+            let scriviErrore = document.getElementById("errore");
+            scriviErrore.innerText = "Non è presente la tua lingua";
+        }
+    }
+   
+    
+
+    async function errore() {
+        //http://talos.iiscggubbio.local:9000/salutoErrore 503
+        let scriviErrore = document.getElementById("errore");
+        let risposta;
+        risposta = await fetch("http://talos.iiscggubbio.local:9000/salutoErrore");
+        if(!risposta.ok){
+            console.error("errore HTTP:" + risposta.status);
+            scriviErrore.innerText = "Non sono riuscito a visualizzare la risorsa. Errore "+ risposta.status;
+        }else{
+            let fileJason = await risposta.json();
+        }
+    }
+
+    async function errore2() {
+        let scriviErrore = document.getElementById("errore");
+        let risposta;
+         //http://talos.iiscggubbio.local:9000/salutoErrore2 file jason corrotto
+         try {
+            risposta = await fetch("http://talos.iiscggubbio.local:9000/salutoErrore2");
+                if(!risposta.ok){
+                    console.error("errore HTTP:" + risposta.status)
+                }else{
+                    let fileJason = await risposta.json();
+                }
+         } catch (e) {
+            scriviErrore.innerText = "Errore: "+ e;
+         }
+        
+    }
+</script>
+
+<body>
+    <p>nome: </p>
+    <input type="text" id="nome">
+    <p>saluto: <span id="saluto"></span></p>
+    <div>
+        <p>lingua: </p>
+        <input type="text" id="lingua">
+    </div>
+
+    <div><button onclick="chiedi()">test</button>
+        <button onclick="inviaNome()">nome</button>
+        <button onclick="lingua()">lingua</button>
+        <button onclick="errore()">errore 503</button>
+        <button onclick="errore2()">errore file</button>
+    </div>
+
+    <label id="errore"></label>
+</body>
+
+</html>

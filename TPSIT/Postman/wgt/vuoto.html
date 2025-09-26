@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le select</title>
+    <style>
+        img{
+            height: 80px;
+        }
+    </style>
+    <script>
+        "use strict"
+
+        async function load() {
+            let rispostaTornei = await fetch("http://10.1.0.52:8180/golf/tornei");
+            let tornei = await rispostaTornei.json();
+            for (let index = 0; index < tornei.length; index++) {
+                let foto = document.createElement("img");
+                foto.src = tornei[index].campo.foto[0];
+
+                let nome = document.createElement("h2");
+                let descrizione = document.createTextNode(tornei[index].nome);
+                nome.appendChild(foto);
+                nome.appendChild(descrizione);
+                corpo.appendChild(nome);
+
+                let url = "http://10.1.0.52:8180/golf/tornei/" + tornei[index].id;
+                let rispostaDettagli = await fetch(url);
+                let torneo = await rispostaDettagli.json();
+
+                for (let i = 0; i < torneo.prestazioni.length; i++) {
+                    const player = torneo.prestazioni[i].giocatore;
+                    let giocatore = document.createElement("p");
+                    giocatore.innerText = player.nome + " handicap: " + player.handicap;
+
+                    corpo.appendChild(giocatore);
+                }
+            }
+
+            
+        }
+    </script>
+</head>
+<body onload="load()" id="corpo">
+    
+</body>
+</html>

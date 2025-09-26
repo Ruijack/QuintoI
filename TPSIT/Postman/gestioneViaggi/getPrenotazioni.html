@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerca pronotazioni</title>
+    <link rel="stylesheet" href="stileVoli.css">
+
+    <script>
+        "use strict"
+
+        async function cercaVolo() {
+            let nomePrenotazione = document.getElementById("nomeVolo").value;
+            let tabellaDati = document.getElementById("risulatatoVoli");
+
+            let rispostaBiglietti = await fetch("http://10.1.0.52:8088/tickets?name=" + nomePrenotazione);
+            let jsonBiglietti = await rispostaBiglietti.json();
+            
+            if(jsonBiglietti.length == 1){
+                let dataVolo = jsonBiglietti[0].date;
+                let rispostaVolo = await fetch("http://10.1.0.52:8088/flights/"+ jsonBiglietti[0].flightId);
+                let jsonVolo = await rispostaVolo.json();
+
+                let partenza = jsonVolo.from.city;
+                let destinazione = jsonVolo.to.city;
+
+                let rigaDati = tabellaDati.insertRow();
+                let casellaPartenza = rigaDati.insertCell(0);
+                let casellaDestinazione = rigaDati.insertCell(1);
+                let casellaData = rigaDati.insertCell(2);
+
+                casellaPartenza.innerText = partenza;
+                casellaDestinazione.innerText = destinazione;
+                casellaData.innerText = dataVolo;
+            }else{
+                for(let c = 0; c <jsonBiglietti.length; c++){
+                    let dataVolo = jsonBiglietti[c].date;
+                    let rispostaVolo = await fetch("http://10.1.0.52:8088/flights/"+ jsonBiglietti[c].flightId);
+                    let jsonVolo = await rispostaVolo.json();
+
+                    let partenza = jsonVolo.from.city;
+                    let destinazione = jsonVolo.to.city;
+
+                    let rigaDati = tabellaDati.insertRow();
+                    let casellaPartenza = rigaDati.insertCell(0);
+                    let casellaDestinazione = rigaDati.insertCell(1);
+                    let casellaData = rigaDati.insertCell(2);
+
+                    casellaPartenza.innerText = partenza;
+                    casellaDestinazione.innerText = destinazione;
+                    casellaData.innerText = dataVolo;
+                }
+            }
+
+        }
+
+        async function cercaHotel() {
+            let nomePrenotazione = document.getElementById("nomeHotel").value;
+            let tabellaDati = document.getElementById("risulatatoHotel");
+
+            try {
+                let rispostaHotel = await fetch("http://10.1.0.52:8088/reservations?name=" + nomePrenotazione);
+                let jsonHotel = await rispostaHotel.json();
+            
+                if(jsonHotel.length == 1){
+                    let rigaDati = tabellaDati.insertRow();
+                    let casellaCitta = rigaDati.insertCell(0);
+                    let casellaIn = rigaDati.insertCell(1);
+                    let casellaOut = rigaDati.insertCell(2);
+                    let casellaOspiti = rigaDati.insertCell(3);
+
+                    casellaIn.innerText = jsonHotel[0].from;
+                    casellaOut.innerText = jsonHotel[0].to;
+                    casellaOspiti.innerText = jsonHotel[0].guests;
+
+                    //Cerco il nome della città con quel id
+                    let rispostaCitta = await fetch("http://10.1.0.52:8088/cities/" + jsonHotel[0].cityId);
+                    let jsonCitta = await rispostaCitta.json();
+
+                    casellaCitta.innerText = jsonCitta.city;
+                }else{
+                    for(let c = 0; c <jsonHotel.length; c++){
+                        let rigaDati = tabellaDati.insertRow();
+                        let casellaCitta = rigaDati.insertCell(0);
+                        let casellaIn = rigaDati.insertCell(1);
+                        let casellaOut = rigaDati.insertCell(2);
+                        let casellaOspiti = rigaDati.insertCell(3);
+
+                        casellaIn.innerText = jsonHotel[c].from;
+                        casellaOut.innerText = jsonHotel[c].to;
+                        casellaOspiti.innerText = jsonHotel[c].guests;
+
+                        //Cerco il nome della città con quel id
+                        let rispostaCitta = await fetch("http://10.1.0.52:8088/cities/" + jsonHotel[c].cityId);
+                        let jsonCitta = await rispostaCitta.json();
+
+                        casellaCitta.innerText = jsonCitta.city;
+                    }
+                }
+            } catch (e) {
+                console.log(e.name);
+                console.log(e.message);
+            }
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Ricerca dei Voli e Stanze d'Hotel</h1>
+            </div>
+        </header>
+    
+        <section class="reservation-form">
+            <div class="container">
+    
+                <div class="form-container">
+                    <h2>Ricerca Voli</h2>
+                        <label for="nomeVolo">Nome della prenotazione:</label>
+                        <input type="text" id="nomeVolo"required>
+
+                        <button onclick="cercaVolo()">Trova il volo</button>
+                     <table id="risulatatoVoli">
+                          <tr>
+                             <td>Città partenza</td>
+                              <td>Città destinazione</td>
+                              <td>Data</td>
+                        </tr>
+                    </table>
+                </div>
+    
+                <div class="form-container">
+                    <h2>Ricerca Hotel</h2>
+    
+                        <label for="nomeHotel">Nome della prenotazione:</label>
+                        <input type="text" id="nomeHotel"required>
+    
+                        <button onclick="cercaHotel()" type="submit">Trova l'hotel</button>
+                        
+                        <table id="risulatatoHotel">
+                            <tr>
+                                <td>Città</td>
+                                <td>Data check-in</td>
+                                <td>Data check-out</td>
+                                <td>Numero ospiti</td>
+                            </tr>
+                        </table>
+                </div>
+            </div>
+        </section>
+    
+        <footer>
+            <div class="container">
+                <p>&copy; 2025 Ricerca dei Voli e Hotel. Tutti i diritti riservati.</p>
+            </div>
+        </footer>
+    </body>
+</html>

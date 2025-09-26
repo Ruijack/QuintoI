@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prenotazione Voli e Hotel</title>
+    <link rel="stylesheet" href="stileVoli.css">
+</head>
+
+<script>
+    "use strict"
+    async function cercaCitta(citta, paese) {
+        let risposta = await fetch("http://10.1.0.52:8088/cities?city=" );
+    }
+    /**
+     * cerca tra le opzioni quella selezionata
+     * ritorna il id della città selezionata
+     **/
+    function cercaSelezionato(lista) {
+        let casellaSelezionata;
+        for (let c = 1;casellaSelezionata == null; c++) {
+            if(lista[c].selected){
+                casellaSelezionata = lista[c].value;
+            }
+        }
+        return casellaSelezionata;
+    }
+
+    async function cercaPartenza(){
+        let contieneElenco = document.getElementById("cittaPartenza");
+        //let elenco = contieneElenco.querySelectorAll("option");
+
+        //per fare una nuova ricerca svuota prima le opzioni per metterne delle nuove
+        while (contieneElenco.lastChild.id != "promptPartenza") {
+            contieneElenco.removeChild(contieneElenco.lastChild);
+        }
+        let cittaPartenza = document.getElementById("partenza").value;
+
+        try {
+            let risposta = await fetch("http://10.1.0.52:8088/cities?city=" + cittaPartenza);
+            let fileJason = await risposta.json();
+
+            for (let c = 0; c < fileJason.length; c++) {
+            let option = document.createElement("option");
+            option.textContent = fileJason[c].city + " - " + fileJason[c].country;
+            option.value = fileJason[c].id;
+            contieneElenco.appendChild(option);
+            }
+        } catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+        
+    }
+
+    //cerca nel database dei voli quelli con partenza la città selezionata
+    async function destinazioniPossibili() {
+        let elencoDestinazioni = document.getElementById("cittaDestinazione");
+        while (elencoDestinazioni.lastChild.id != "promptDestinazione") {
+            elencoDestinazioni.removeChild(elencoDestinazioni.lastChild);
+        }
+
+        let elencoPartenze = document.getElementById("cittaPartenza");
+        let cittaPartenza = cercaSelezionato(elencoPartenze);
+        
+        try {
+            let rispostaVoli = await fetch("http://10.1.0.52:8088/flights?from=" + cittaPartenza);
+            let fileJasonVoli = await rispostaVoli.json();
+
+            if(fileJasonVoli.length == 0){
+                let outPrenotazione = document.getElementById("risultatoPrenotazione");
+                outPrenotazione.innerText = "Sembra che non esistano voli che partono da questa città";
+            }else{
+                for (let c = 0; c < fileJasonVoli.length; c++) {
+                    let option = document.createElement("option");
+                    option.textContent = fileJasonVoli[c].to.city + " - " + fileJasonVoli[c].to.country;
+                    option.value = fileJasonVoli[c].to.id;
+                    elencoDestinazioni.appendChild(option);
+                }
+            }
+
+        } catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+    }
+
+    async function cercaDestinazione(){
+        let contieneElenco = document.getElementById("cittaDestinazione");
+        //let elenco = contieneElenco.querySelectorAll("option");
+
+        while (contieneElenco.lastChild.id != "promptDestinazione") {
+            contieneElenco.removeChild(contieneElenco.lastChild);
+        }
+        let cittaDestinazione = document.getElementById("destinazione").value;
+
+        try {
+            let risposta = await fetch("http://10.1.0.52:8088/cities?city=" + cittaDestinazione);
+            let fileJason = await risposta.json();
+            for (let c = 0; c < fileJason.length; c++) {
+            let option = document.createElement("option");
+            option.textContent = fileJason[c].city + " - " + fileJason[c].country;
+            option.value = fileJason[c].id;
+            contieneElenco.appendChild(option);
+            }
+        } catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+        
+    }
+
+    //working progress
+    async function prenotaVolo() {
+        //cerca la città di partenza selezionata
+        let outPrenotazione = document.getElementById("risultatoPrenotazione");
+
+        let listaPartenza = document.getElementById("cittaPartenza");
+        let idPartenza = cercaSelezionato(listaPartenza);
+        
+        //cerca la città di destinazione selezionata
+        let listaDestinazione = document.getElementById("cittaDestinazione");
+        let idDestinazione = cercaSelezionato(listaDestinazione);
+
+        try {
+            let risposta = await fetch("http://10.1.0.52:8088/flights?from=" + idPartenza + "&to=" + idDestinazione);
+            let fileJason = await risposta.json();
+            if(fileJason.length == 0){
+                outPrenotazione.innerText = "Sembra che questo volo non esista";
+            }else{
+                console.log(fileJason)
+                let biglietto = {
+                    flightId : fileJason[0].id,
+                    name : document.getElementById("flightName").value,
+                    date : document.getElementById("dataVolo").value
+                };
+                let parametriRichiesta = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(biglietto)
+                };
+                let mandaBiglietto = await fetch("http://10.1.0.52:8088/tickets", parametriRichiesta);
+                outPrenotazione.innerText = "Perfetto! Il tuo biglietto è stato prenotato";
+            }
+            
+        } catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+    }
+
+    //crea le opzioni del selector, con le città con le lettere, di input, presenti nel suo nome
+    async function cercaHotel() {
+        let contieneElenco = document.getElementById("listaHotel");
+        //let elenco = contieneElenco.querySelectorAll("option");
+
+        while (contieneElenco.lastChild.id != "promptHotel") {
+            contieneElenco.removeChild(contieneElenco.lastChild);
+        }
+        let inizialeCitta = document.getElementById("inizialeHotel").value;
+
+        try {
+            let risposta = await fetch("http://10.1.0.52:8088/cities?city=" + inizialeCitta);
+            let fileJason = await risposta.json();
+            for (let c = 0; c < fileJason.length; c++) {
+            let option = document.createElement("option");
+            option.textContent = fileJason[c].city + " - " + fileJason[c].country;
+            option.value = fileJason[c].id;
+            contieneElenco.appendChild(option);
+            }
+        } catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+    }
+
+    async function prenotaHotel() {
+        let prenotazione = {};
+        let listaHotel = document.getElementById("listaHotel");
+
+        prenotazione.cityId = cercaSelezionato(listaHotel);
+        prenotazione.name = document.getElementById("hotelName").value;
+        prenotazione.from = document.getElementById("checkin-date").value;
+        prenotazione.to = document.getElementById("checkout-date").value;
+        prenotazione.guests = document.getElementById("numeroPersone").value;
+
+        let parametriRichiesta = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(prenotazione)
+        };
+        try {
+            let risposta = await fetch("http://10.1.0.52:8088/reservations", parametriRichiesta);
+            }
+         catch (e) {
+            console.log(e.name);
+            console.log(e.message);
+        }
+    }
+
+</script>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>Prenotazione Voli e Stanze d'Hotel</h1>
+        </div>
+    </header>
+
+    <section class="reservation-form">
+        <div class="container">
+
+            <div class="form-container">
+                <h2>Volo</h2>
+                    <div id="blocchi">
+                    <label for="from">Partenza:</label>
+                    <input type="text" id="partenza">
+                    <button onclick="cercaPartenza()">cerca</button>
+                    </div>
+
+                    <select id="cittaPartenza">
+                        <option id="promptPartenza">seleziona una città</option>
+                    </select>
+
+                    <button type="submit" onclick="destinazioniPossibili()">Cerca destinazioni possibili</button>
+
+                    
+                    <div id="blocchi">
+                    <label for="to">Destinazione:</label>
+                    <input type="text" id="destinazione" >
+                    <button onclick="cercaDestinazione()">cerca</button>
+                    </div>
+
+                    <div id="blocchi">
+                    <label for="cittaDestinazione">Scegli la tua destinazione</label>
+                    <select id="cittaDestinazione">
+                        <option id="promptDestinazione">seleziona una città</option>
+                    </select>
+                    </div>
+
+                    <label for="flightName">Nome della prenotazione:</label>
+                    <input type="text" id="flightName"required>
+
+                    <div id="blocchi">
+                    <label for="dataVolo">Data per il volo:</label>
+                    <input type="date" id="dataVolo" name="dataVolo" required>
+                    <button type="submit" onclick="prenotaVolo()">Prenota Volo</button>
+                    </div>
+
+                    
+                    <label for="risultato prenotazione" id="risultatoPrenotazione"></label>
+
+            </div>
+
+            <div class="form-container">
+                <h2>Hotel</h2>
+                    <label for="inizialeHotel">Destinazione:</label>
+                    <input type="text" id="inizialeHotel" name="location" placeholder="Città o Area" required>
+                    <button onclick="cercaHotel()">cerca</button>
+                    <select id="listaHotel">
+                        <option id="promptHotel">seleziona una città</option>
+                    </select>
+
+                    <div id="blocchi">
+                    <label for="checkin-date">Data di Check-in:</label>
+                    <input type="date" id="checkin-date" name="checkin-date" required>
+
+                    <label for="checkout-date">Data di Check-out:</label>
+                    <input type="date" id="checkout-date" name="checkout-date" required>
+                    </div>
+
+                    <label for="hotelName">Nome della prenotazione:</label>
+                    <input type="text" id="hotelName"required>
+
+                    <div id="blocchi">
+                    <label for="numeroPersone">Numero di persone:</label>
+                    <input type="number" id="numeroPersone" name="rooms" min="1" required>
+
+                    <button onclick="prenotaHotel()" type="submit">Prenota Hotel</button>
+                    </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Prenotazioni Voli e Hotel. Tutti i diritti riservati.</p>
+        </div>
+    </footer>
+
+
+
+</body>
+</html>

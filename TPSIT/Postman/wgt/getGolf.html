@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informazioni per il golf</title>
+    <link rel="stylesheet" href="golfStiloso.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<script>
+    const dataOggi = new Date();
+    const year = dataOggi.getFullYear();
+    const month = String(dataOggi.getMonth() + 1);
+    const day = String(dataOggi.getDate());
+    const stringOggi = `${year}-${month}-${day}`;
+    const server = "http://10.1.0.52:8180/golf/";
+    "use strict"
+    // async function getJson(cartella,[id],[giocatore]){
+    //     if(id){
+    //         let risposta = await fetch("http://10.1.0.52:8180/golf/"+ `${cartella}/${id}`);
+    //         let json = await risposta.json();
+    //     }
+    //     if(giocatore){
+    //         let risposta = await fetch("http://10.1.0.52:8180/golf/"+ `${cartella}/${id}`);
+    //         let json = await risposta.json();
+    //     }
+
+    //     return json;
+    // }
+
+    function lanciaGet() {
+        mostraCampi();
+        mostraGiocatori();
+        mostraTornei();
+        selectTornei();
+        selectGiocatori();
+    }
+    //crea gli option per il selector
+    //mostra nome, data e nome del campo del torneo
+    async function selectTornei() {
+        let selector = document.getElementsByClassName("tornei");
+        let rispostaTornei = await fetch(server + "tornei");
+        let jsonTornei = await rispostaTornei.json();
+
+        for(let c = 0; c < jsonTornei.length; c++){
+            let option = document.createElement("option");
+            option.innerText = jsonTornei[c].nome + " - " + jsonTornei[c].data + " - " + jsonTornei[c].campo.nome;
+            option.value = jsonTornei[c].id;
+            for(let s = 0; s < selector.length; s++){
+                selector[s].appendChild(option);
+            }
+        }
+    }
+
+    async function selectGiocatori() {
+        let selector = document.getElementsByClassName("giocatori");
+        let rispostaGiocatori = await fetch(server + "giocatori");
+        let jsonGiocatori = await rispostaGiocatori.json();
+
+        for(let c = 0; c < jsonGiocatori.length; c++){
+            let option = document.createElement("option");
+            option.innerText = jsonGiocatori[c].nome;
+            option.value = jsonGiocatori[c].id;
+            for(let s = 0; s < selector.length; s++){
+                selector[s].appendChild(option);
+            }
+        }
+    }
+
+
+    async function mostraCampi() {
+        let listaCampi = document.getElementById("listaCampi");
+        let rispostaCampi = await fetch(server + "campi");
+        let jsonCampi = await rispostaCampi.json();
+        for (let c = 0; c < jsonCampi.length; c++) {
+            let riga = document.createElement("tr");
+            riga.innerHTML = `<td id='${jsonCampi[c].id}' onclick='infoCampo(this.id)'>${jsonCampi[c].nome}</td>`;
+            listaCampi.appendChild(riga);
+        }
+    }
+
+    //es 1 mostra campi
+    async function infoCampo(idCampo) {
+        let riga = document.getElementById(idCampo);
+        let rispostaCampo = await fetch(server + "campi/" + idCampo);
+        let jsonCampo = await rispostaCampo.json();
+
+        let buche = document.createElement("td");
+        buche.innerText = "Numero buche: " + jsonCampo.numeroBuche;
+        let par = document.createElement("td");
+        par.innerText = "Devi finire il campo in: " + jsonCampo.par + "colpi";
+        riga.appendChild(buche);
+        riga.appendChild(par);
+
+        //1a tornei del campo
+        let rispostaTornei = await fetch(server + "tornei");
+        let jsonTornei = await rispostaTornei.json();
+        let torneiCampo = document.createElement("ul");
+        //1b differenziare tornei futuri e passati
+        jsonTornei.forEach(torneo => {
+            let id;
+            if (stringOggi > torneo.data) {
+                id = "passato";
+            }else{
+                id = "futuro";
+            }
+            if(torneo.campo.id == idCampo){
+                torneiCampo.innerHTML += `<li id="${id}">` + torneo.nome + "</li>"
+            }
+        });
+        let casellaTornei = document.createElement("td");
+        casellaTornei.appendChild(torneiCampo);
+        riga.appendChild(casellaTornei);
+
+
+        for (let c = 0; c < jsonCampo.foto.length; c++) {
+            let casellaFoto = document.createElement("td");
+            let foto = document.createElement("img");
+            foto.src = jsonCampo.foto[c];
+            casellaFoto.appendChild(foto);
+            riga.appendChild(casellaFoto);
+        }
+    }
+
+    async function mostraGiocatori() {
+        let listaGiocatori = document.getElementById("listaGiocatori");
+        let rispostaGiocatori = await fetch(server + "giocatori");
+        let jsonGiocatori = await rispostaGiocatori.json();
+        for (let c = 0; c < jsonGiocatori.length; c++) {
+            let giocatore = document.createElement("p");
+            giocatore.innerText = jsonGiocatori[c].nome + ", handicap: " + jsonGiocatori[c].handicap;
+            listaGiocatori.appendChild(giocatore);
+        }
+    }
+
+    async function postaGiocatore(nomeGiocatore, handicapGiocatore) {
+        let pRisultato = document.getElementById("risultatoGiocatore");
+        if (nomeGiocatore.value == null || handicapGiocatore.value == null) {
+            pRisultato.innerText = "Il nome o l'handicap del giocatore non sono stati inseriti";
+        } else {
+            try {
+                let oggettoPost = {
+                    nome: nomeGiocatore.value,
+                    handicap: handicapGiocatore.value
+                }
+                console.log(oggettoPost)
+                let parametriRichiesta = {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(oggettoPost)
+                };
+                let mandaPost = await fetch(server + "giocatori", parametriRichiesta);
+                pRisultato.innerText = "Giocatore registrato con successo";
+            } catch (e) {
+                console.log("nome errore: " + e.name);
+                console.log("messaggio errore: " + e.message);
+            }
+        }
+        mostraGiocatori();
+    }
+
+// tornei mostro il nome, data, nome campo e lista giocatori iscritti
+//creo una ul per ogni torneo e la metto nella ul grande
+    async function mostraTornei() {
+        try {
+             
+        let listaTornei = document.getElementById("listaTornei");
+        let rispostaTornei = await fetch(server + "tornei");
+        let jsonTornei = await rispostaTornei.json();
+
+        //let listaID = [];
+        for (let c = 0; c < jsonTornei.length; c++) {
+        //     listaID.push(jsonTornei[c].id);
+        // }
+
+        // for (let c = 0; c < listaID.length; c++) {
+            let torneo = document.createElement("li");
+            let rispostaTorneo = await fetch(server + "tornei/" + jsonTornei[c].id);//listaID[c]
+            let jsonTorneo = await rispostaTorneo.json();
+            let listaGiocatori = "";
+            for (let index = 0; index < jsonTorneo.prestazioni.length; index++) {
+                if (jsonTorneo.prestazioni.length != 0) {
+                    listaGiocatori += "<li>" + jsonTorneo.prestazioni[index].giocatore.nome + "</li>";
+                }
+                
+            }
+            torneo.innerHTML = `${jsonTorneo.nome}<ul>
+                <li>data: ${jsonTorneo.data}</li>
+                <li>campo: ${jsonTorneo.campo.nome}</li>
+                <li>Giocatori iscritti:<ul>
+                    ${listaGiocatori}</ul></li>
+                </ul>`;
+
+            listaTornei.appendChild(torneo);
+        }
+    }catch (e) {
+                console.log("nome errore: " + e.name);
+                console.log("messaggio errore: " + e.message);
+            }
+    }
+
+
+    function cercaSelezionato(select) {
+        let casellaSelezionata;
+        for (let c = 1;casellaSelezionata == null; c++) {
+            if(select[c].selected){
+                casellaSelezionata = select[c].value;
+            }
+        }
+        return casellaSelezionata;
+    }
+
+    //esercizio 5 inserimento di una prestazione
+    async function postPrestazione(colpiPrestazione, giocatoreDellaPrestazione, torneoDellaPrestazione) {
+        let idGiocatore = {};
+        idGiocatore.id = cercaSelezionato(giocatoreDellaPrestazione);
+        let idTorneo = {};
+        idTorneo.id = cercaSelezionato(torneoDellaPrestazione);
+
+        let prestazione = {};
+        prestazione.colpi = colpiPrestazione.value;
+        prestazione.giocatore = idGiocatore;
+        prestazione.torneo = idTorneo;
+        console.log(prestazione);
+        let parametriRichiesta = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            body: JSON.stringify(prestazione)
+        };
+        console.log(parametriRichiesta);
+        let mandaPost = await fetch(server + "prestazioni", parametriRichiesta);
+    }
+
+    /**
+     * handicap + par = numero di colpi che quel giocatore dovrebbero finire quel campo
+     * handicap minore = questo giocatore è bravo, ci deve mettere meno colpi a finire il campo
+     * par = numero di colpi con cui si dovrebbe finire il campo
+     **/
+</script>
+
+<body onload="lanciaGet()">
+
+    <label for="listaCampi">I campi dove si terrano il World Golf Tournament</label>
+    <table id="listaCampi">
+    </table>
+    <div id="map" style="height: 300px;"></div>
+
+    <script>
+        "use strict"
+        //setView([lat, lng], zoom)
+        const map = L.map("map").setView([36.5798426,-121.9762037],10);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+            attribution:'Open street maps ckrcrckr'
+        }).addTo(map);
+
+        async function creaMarker() {
+            let rispostaCampi = await fetch(server + "campi");
+            let campi = await rispostaCampi.json();
+            //[lat, lng]
+            campi.forEach(async campo => {
+
+                let rispostaCampo = await fetch(server + "campi/" + campo.id);
+                let campoUnico = await rispostaCampo.json();
+
+                L.marker([campoUnico.latitudine, campoUnico.longitudine])
+                .addTo(map)
+                .bindPopup(campoUnico.nome);
+            });
+        }
+        creaMarker();
+        
+    </script>
+
+    <section id="listaGiocatori">
+        <label>Inserisci nuovo giocatore</label>
+        <p>Nome giocatore: <input type="text" id="nomeGiocatore"> handicap: <input type="number" id="handicapGiocatore">
+            <button onclick="postaGiocatore(nomeGiocatore, handicapGiocatore)">Inserisci giocatore</button></p>
+        <p id="risultatoGiocatore"></p>
+        <label for="listaGiocatori">Lista giocatori</label>
+    </section>
+
+    <label for="listaTornei">Tornei</label>
+    <ul id="listaTornei">
+
+    </ul>
+
+
+    <p>Insert Prestazione</label>
+    <div>
+        <label for="colpiPrestazione">Colpi con cui il giocatore ha finito il torneo</label>
+        <input type="number" id="colpiPrestazione">
+        <label for="giocatori">Giocatore</label>
+        <select name="" class="giocatori" id="giocatoreDellaPrestazione">
+            <option value="">seleziona un giocatore</option>
+        </select>
+
+        <label for="tornei">Torneo</label>
+        <select name="" class="tornei" id="torneoDellaPrestazione">
+            <option value="">seleziona un torneo</option>
+        </select>
+        <input type="submit" onclick="postPrestazione(colpiPrestazione, giocatoreDellaPrestazione, torneoDellaPrestazione)">
+    </div>
+    
+
+</body>
+
+</html>
